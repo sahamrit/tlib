@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "MLTable": "yaml",
+        "stdlib.h": "c",
+        "malloc.h": "c"
+    }
+}
