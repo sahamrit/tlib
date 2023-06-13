@@ -6,6 +6,9 @@
 #include <assert.h>
 #include <inttypes.h>
 
+//
+// context and memory functions
+//
 struct tlib_context tlib_init(const struct tlib_init_params params)
 {
     size_t mem_size_aligned = (params.mem_size + TLIB_MEM_ALIGN - 1) & (~(TLIB_MEM_ALIGN - 1));
@@ -32,6 +35,9 @@ struct tlib_context tlib_init(const struct tlib_init_params params)
     return ctx;
 }
 
+//
+// tensor and related operations
+//
 struct tlib_tensor *tlib_new_tensor_impl(struct tlib_context *ctx,
                                          enum tlib_types type,
                                          int n_dims,
@@ -101,6 +107,7 @@ struct tlib_tensor *tlib_new_tensor_impl(struct tlib_context *ctx,
     }
 
     ctx->n_objects++;
+    ctx->object_end = new_obj;
 
     new_tensor->n_bytes[n_dims - 1] = TLIB_TYPE_SIZE[type];
     for (int i = n_dims - 2; i >= 0; i--)
@@ -109,12 +116,6 @@ struct tlib_tensor *tlib_new_tensor_impl(struct tlib_context *ctx,
     }
 
     return new_tensor;
-}
-struct tlib_tensor *tlib_new_tensor_1d(struct tlib_context *ctx,
-                                       enum tlib_types type,
-                                       int64_t ne)
-{
-    return tlib_new_tensor(ctx, type, 1, &ne);
 }
 
 struct tlib_tensor *tlib_new_tensor(struct tlib_context *ctx,
@@ -125,6 +126,38 @@ struct tlib_tensor *tlib_new_tensor(struct tlib_context *ctx,
     return tlib_new_tensor_impl(ctx, type, n_dims, ne, NULL);
 }
 
+struct tlib_tensor *tlib_new_tensor_1d(struct tlib_context *ctx,
+                                       enum tlib_types type,
+                                       int64_t ne)
+{
+    return tlib_new_tensor(ctx, type, 1, &ne);
+}
+
+struct tlib_tensor *tlib_dup_tensor(struct tlib_context *ctx, struct tlib_tensor *x)
+{
+    return tlib_new_tensor_impl(ctx, x->type, x->n_dims, x->n_elements, NULL);
+}
+
+//
+// autodiff related functions
+//
+
+void tlib_set_param(struct tlib_context *ctx, struct tlib_tensor *const x)
+{
+    x->is_param = true;
+    x->grad = tlib_dup_tensor(ctx, x);
+}
+
+//
+// misc
+//
+
+void debug_tensor(struct tlib_tensor *x)
+{
+    fprintf(stdout, "STDOUT: %s: Allocated tensor of shape (%" PRId64 ", %" PRId64 ", %" PRId64 ", %" PRId64 ") and stride (%zu, %zu, %zu, %zu) \n",
+            __FILE__, x->n_elements[0], x->n_elements[1], x->n_elements[2], x->n_elements[3],
+            x->n_bytes[0], x->n_bytes[1], x->n_bytes[2], x->n_bytes[3]);
+}
 int main()
 {
     struct tlib_init_params params = (struct tlib_init_params){
@@ -133,14 +166,19 @@ int main()
 
     };
 
-    struct tlib_context ctx;
-    ctx = tlib_init(params);
+    struct tlib_context *ctx;
+    *ctx = tlib_init(params);
 
-    fprintf(stdout, "STDOUT: %s: Context initialised with mem size: %d bytes", __FILE__, ctx.mem_size);
+    fprintf(stdout, "STDOUT: %s: Context initialised with mem size: %d bytes \n", __FILE__, ctx->mem_size);
 
-    struct tlib_tensor *x = tlib_new_tensor_1d(&ctx, TLIB_TYPE_F32, 10);
+    struct tlib_tensor *x = tlib_new_tensor_1d(ctx, TLIB_TYPE_F32, 10);
 
-    fprintf(stdout, "STDOUT: %s: Allocated tensor of shape (%" PRId64 ", %" PRId64 ", %" PRId64 ", %" PRId64 ") and stride (%zu, %zu, %zu, %zu)",
-            __FILE__, x->n_elements[0], x->n_elements[1], x->n_elements[2], x->n_elements[3],
-            x->n_bytes[0], x->n_bytes[1], x->n_bytes[2], x->n_bytes[3]);
+    debug_tensor(x);
+
+    tlib_set_param(ctx, x);
+
+    debug_tensor(x->grad);
 }
+
+// gcc -std=c11 -g .\tlib.c  -o tlib
+// gcc -std=c11 .\tlib.c  -o tlib

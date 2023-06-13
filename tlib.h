@@ -100,9 +100,6 @@ struct tlib_tensor
     char name[TLIB_MAX_NAME];
 };
 static const size_t TLIB_TENSOR_SIZE = sizeof(struct tlib_tensor);
-struct tlib_tensor *tlib_new_tensor_1d(struct tlib_context *ctx,
-                                       enum tlib_types type,
-                                       int64_t ne);
 
 struct tlib_tensor *tlib_new_tensor(struct tlib_context *ctx,
                                     enum tlib_types type,
@@ -114,8 +111,18 @@ struct tlib_tensor *tlib_new_tensor_impl(struct tlib_context *ctx,
                                          int n_dims,
                                          int64_t *ne,
                                          void *data);
+struct tlib_tensor *tlib_new_tensor_1d(struct tlib_context *ctx,
+                                       enum tlib_types type,
+                                       int64_t ne);
+
+struct tlib_tensor *tlib_dup_tensor(struct tlib_context *ctx, struct tlib_tensor *x);
 //
 // init and memory management functions
 //
 
 struct tlib_context tlib_init(const struct tlib_init_params params);
+
+//
+// autograd
+//
+void tlib_set_param(struct tlib_context *ctx, struct tlib_tensor *const x);
