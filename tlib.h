@@ -120,13 +120,19 @@ struct tlib_tensor *tlib_new_tensor_1d(struct tlib_context *ctx,
                                        int64_t ne);
 
 struct tlib_tensor *tlib_dup_tensor(struct tlib_context *ctx, struct tlib_tensor *x);
+struct tlib_tensor *tlib_view_tensor(struct tlib_context *ctx, struct tlib_tensor *x);
 
 //
 // supported tensor operations - unary and binary
 //
 
+struct tlib_tensor *tlib_add_impl(struct tlib_context *ctx, struct tlib_tensor *a, struct tlib_tensor *b, bool inplace);
+struct tlib_tensor *tlib_mul_impl(struct tlib_context *ctx, struct tlib_tensor *a, struct tlib_tensor *b, bool inplace);
+
 struct tlib_tensor *tlib_add(struct tlib_context *ctx, struct tlib_tensor *a, struct tlib_tensor *b);
 struct tlib_tensor *tlib_mul(struct tlib_context *ctx, struct tlib_tensor *a, struct tlib_tensor *b);
+struct tlib_tensor *tlib_add_inplace(struct tlib_context *ctx, struct tlib_tensor *a, struct tlib_tensor *b);
+struct tlib_tensor *tlib_mul_inplace(struct tlib_context *ctx, struct tlib_tensor *a, struct tlib_tensor *b);
 
 //
 // init and memory management functions

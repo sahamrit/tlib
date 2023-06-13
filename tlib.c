@@ -94,12 +94,14 @@ struct tlib_tensor *tlib_new_tensor_impl(struct tlib_context *ctx,
         /*src0 =*/NULL,
         /*src1 =*/NULL,
         /*is_param =*/false,
-        /*data =*/NULL, // TODO
+        /*data =*/(data == NULL ? (void *)(ctx->mem_buffer + new_obj->offset + TLIB_TENSOR_SIZE) : data),
         /*type =*/type,
         /*backend =*/TLIB_BACKEND_CPU,
         /*op =*/TLIB_OP_NONE,
         /*name =*/{0},
     };
+
+    assert((void *)(ctx->mem_buffer + new_obj->offset + TLIB_TENSOR_SIZE) == (void *)(new_tensor + 1));
 
     for (int i = 0; i < n_dims; i++)
     {
@@ -137,18 +139,29 @@ struct tlib_tensor *tlib_dup_tensor(struct tlib_context *ctx, struct tlib_tensor
 {
     return tlib_new_tensor_impl(ctx, x->type, x->n_dims, x->n_elements, NULL);
 }
+struct tlib_tensor *tlib_view_tensor(struct tlib_context *ctx, struct tlib_tensor *x)
+{
+    struct tlib_tensor *res = tlib_new_tensor_impl(ctx, x->type, x->n_dims, x->n_elements, x->data);
+
+    res->n_bytes[0] = x->n_bytes[0];
+    res->n_bytes[1] = x->n_bytes[1];
+    res->n_bytes[2] = x->n_bytes[2];
+    res->n_bytes[3] = x->n_bytes[3];
+
+    return res;
+}
 
 //
 // tensor operations implementation - unary and binary
 //
 
-struct tlib_tensor *tlib_add(struct tlib_context *ctx, struct tlib_tensor *a, struct tlib_tensor *b)
+struct tlib_tensor *tlib_add_impl(struct tlib_context *ctx, struct tlib_tensor *a, struct tlib_tensor *b, bool inplace)
 {
-    struct tlib_tensor *result = tlib_dup_tensor(ctx, a);
+    struct tlib_tensor *result = inplace ? tlib_view_tensor(ctx, a) : tlib_dup_tensor(ctx, a);
     result->op = TLIB_OP_ADD;
 
     bool is_node = false;
-    if (a->grad || b->grad)
+    if (!inplace & (a->grad || b->grad))
         is_node = true;
 
     result->src0 = a;
@@ -158,13 +171,13 @@ struct tlib_tensor *tlib_add(struct tlib_context *ctx, struct tlib_tensor *a, st
     return result;
 }
 
-struct tlib_tensor *tlib_mul(struct tlib_context *ctx, struct tlib_tensor *a, struct tlib_tensor *b)
+struct tlib_tensor *tlib_mul_impl(struct tlib_context *ctx, struct tlib_tensor *a, struct tlib_tensor *b, bool inplace)
 {
-    struct tlib_tensor *result = tlib_dup_tensor(ctx, a);
+    struct tlib_tensor *result = inplace ? tlib_view_tensor(ctx, a) : tlib_dup_tensor(ctx, a);
     result->op = TLIB_OP_MUL;
 
     bool is_node = false;
-    if (a->grad || b->grad)
+    if (!inplace & (a->grad || b->grad))
         is_node = true;
 
     result->src0 = a;
@@ -173,8 +186,24 @@ struct tlib_tensor *tlib_mul(struct tlib_context *ctx, struct tlib_tensor *a, st
 
     return result;
 }
-// struct tlib_tensor *tlib_mul(struct tlib_context *ctx, struct tlib_tensor *a, struct tlib_tensor *b);
 
+struct tlib_tensor *tlib_add(struct tlib_context *ctx, struct tlib_tensor *a, struct tlib_tensor *b)
+{
+    return tlib_add_impl(ctx, a, b, false);
+}
+struct tlib_tensor *tlib_mul(struct tlib_context *ctx, struct tlib_tensor *a, struct tlib_tensor *b)
+{
+    return tlib_mul_impl(ctx, a, b, false);
+}
+
+struct tlib_tensor *tlib_add_inplace(struct tlib_context *ctx, struct tlib_tensor *a, struct tlib_tensor *b)
+{
+    return tlib_add_impl(ctx, a, b, true);
+}
+struct tlib_tensor *tlib_mul_inplace(struct tlib_context *ctx, struct tlib_tensor *a, struct tlib_tensor *b)
+{
+    return tlib_mul_impl(ctx, a, b, true);
+}
 //
 // autodiff related functions
 //
@@ -218,7 +247,9 @@ int main()
 
     struct tlib_tensor *y = tlib_new_tensor_1d(ctx, TLIB_TYPE_F32, 10);
 
-    struct tlib_tensor *res = tlib_add(ctx, x, y);
+    struct tlib_tensor *res = tlib_add_inplace(ctx, x, y);
+
+    assert(res->data == x->data);
 
     debug_tensor(res);
 }
