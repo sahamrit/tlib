@@ -11,6 +11,7 @@
 #define TLIB_MEM_ALIGN 4      // bytes
 #define TLIB_MAX_TENSOR_DIM 4 // 1D-4D support
 #define TLIB_MAX_NAME 32      // 32 bytes string
+
 //
 // types and backends
 //
@@ -28,6 +29,7 @@ enum tlib_backend
 static const size_t TLIB_TYPE_SIZE[TLIB_TYPE_COUNT] = {
     [TLIB_TYPE_F32] = sizeof(float),
 };
+
 //
 // context and memory related structs
 //
@@ -70,9 +72,11 @@ struct tlib_object
     struct tlib_object *next; // creates a linked list helping in retrieval of tensor from pool
 };
 static const size_t TLIB_OBJECT_SIZE = sizeof(struct tlib_object);
+
 //
-// tensor operations
+// tensor creation and manipulation
 //
+
 enum tlib_ops
 {
     TLIB_OP_NONE,
@@ -116,6 +120,14 @@ struct tlib_tensor *tlib_new_tensor_1d(struct tlib_context *ctx,
                                        int64_t ne);
 
 struct tlib_tensor *tlib_dup_tensor(struct tlib_context *ctx, struct tlib_tensor *x);
+
+//
+// supported tensor operations - unary and binary
+//
+
+struct tlib_tensor *tlib_add(struct tlib_context *ctx, struct tlib_tensor *a, struct tlib_tensor *b);
+struct tlib_tensor *tlib_mul(struct tlib_context *ctx, struct tlib_tensor *a, struct tlib_tensor *b);
+
 //
 // init and memory management functions
 //
@@ -125,4 +137,5 @@ struct tlib_context tlib_init(const struct tlib_init_params params);
 //
 // autograd
 //
+
 void tlib_set_param(struct tlib_context *ctx, struct tlib_tensor *const x);

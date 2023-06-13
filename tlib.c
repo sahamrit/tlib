@@ -139,6 +139,43 @@ struct tlib_tensor *tlib_dup_tensor(struct tlib_context *ctx, struct tlib_tensor
 }
 
 //
+// tensor operations implementation - unary and binary
+//
+
+struct tlib_tensor *tlib_add(struct tlib_context *ctx, struct tlib_tensor *a, struct tlib_tensor *b)
+{
+    struct tlib_tensor *result = tlib_dup_tensor(ctx, a);
+    result->op = TLIB_OP_ADD;
+
+    bool is_node = false;
+    if (a->grad || b->grad)
+        is_node = true;
+
+    result->src0 = a;
+    result->src1 = b;
+    result->grad = is_node ? tlib_dup_tensor(ctx, a) : NULL;
+
+    return result;
+}
+
+struct tlib_tensor *tlib_mul(struct tlib_context *ctx, struct tlib_tensor *a, struct tlib_tensor *b)
+{
+    struct tlib_tensor *result = tlib_dup_tensor(ctx, a);
+    result->op = TLIB_OP_MUL;
+
+    bool is_node = false;
+    if (a->grad || b->grad)
+        is_node = true;
+
+    result->src0 = a;
+    result->src1 = b;
+    result->grad = is_node ? tlib_dup_tensor(ctx, a) : NULL;
+
+    return result;
+}
+// struct tlib_tensor *tlib_mul(struct tlib_context *ctx, struct tlib_tensor *a, struct tlib_tensor *b);
+
+//
 // autodiff related functions
 //
 
@@ -178,6 +215,12 @@ int main()
     tlib_set_param(ctx, x);
 
     debug_tensor(x->grad);
+
+    struct tlib_tensor *y = tlib_new_tensor_1d(ctx, TLIB_TYPE_F32, 10);
+
+    struct tlib_tensor *res = tlib_add(ctx, x, y);
+
+    debug_tensor(res);
 }
 
 // gcc -std=c11 -g .\tlib.c  -o tlib
